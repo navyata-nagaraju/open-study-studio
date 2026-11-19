@@ -68,3 +68,9 @@ test("difficulty rises with scores and stays between 1 and 5", () => {
   assert.equal(difficulty(plans, { a0: { score: 95, attempts: 3 } }, "a", "a0"), 5);
   assert.equal(difficulty(plans, { a0: { score: 0, attempts: 1 } }, "a", "a0"), 1);
 });
+
+test("a low score shows its review in the week plan on the same day it was scored", () => {
+  const progress = recordScore({}, "a0", 50, MONDAY);
+  const out = schedule({ profile: profile(), plans, progress, today: MONDAY, days: 4 });
+  assert.ok(out[addDays(MONDAY, 3)].some((x) => x.t.id === "a0" && x.review));
+});
