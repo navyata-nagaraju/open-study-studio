@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Open Study Studio</title>
+  <meta name="description" content="An AI study tutor for any student: upload your course materials, get a daily plan, learn each topic from the basics and practise with questions that adapt to you.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231E6B52'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h10' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Markdown rendering and HTML sanitising for the AI's lessons -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><i aria-hidden="true"></i>Open Study Studio</div>
+      <nav class="tabs" id="tabs" aria-label="Main"></nav>
+      <span class="sync" id="sync">Loading…</span>
+    </header>
+    <main id="app"></main>
+    <footer class="foot">
+      <span>Your notes, plans and scores are saved only in this browser.</span>
+      <a href="https://github.com/navyata-nagaraju/open-study-studio" target="_blank" rel="noopener">Source on GitHub</a>
+    </footer>
+  </div>
+  <div id="toast" role="status"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
