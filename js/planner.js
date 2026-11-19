@@ -51,7 +51,7 @@ export function schedule({ profile, plans, progress, today, days = 7 }) {
     queue[m.id] = topicsOf(m.id).filter((t) => !p(t.id).done).map((t) => ({ t, m }));
     for (const t of topicsOf(m.id)) {
       const pr = p(t.id);
-      if (pr.done && pr.reviewOn && pr.doneOn !== today) reviews.push({ t, m, on: pr.reviewOn < today ? today : pr.reviewOn });
+      if (pr.done && pr.reviewOn) reviews.push({ t, m, on: pr.reviewOn < today ? today : pr.reviewOn });
     }
   }
   reviews.sort((a, b) => a.on.localeCompare(b.on));

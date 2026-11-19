@@ -41,7 +41,8 @@ function request(settings, prompt, stream, maxTokens, json) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, ...(json ? { responseMimeType: "application/json" } : {}) },
+      // Gemini "thinks" before answering and that thinking counts against the limit, so give it extra room.
+      generationConfig: { maxOutputTokens: maxTokens + 8000, ...(json ? { responseMimeType: "application/json" } : {}) },
     }),
   });
 }
@@ -67,6 +68,13 @@ async function explainError(res) {
   return `The AI provider returned an error (${res.status}). ${detail}`.trim();
 }
 
+// An empty reply (a safety filter, or a cut-off answer) is treated as an error.
+// Otherwise the screen would think the lesson "hasn't loaded yet" and keep asking again.
+function nonEmpty(text) {
+  if (!text || !text.trim()) throw new Error("The AI sent back an empty reply. Try again.");
+  return text;
+}
+
 // Sends one prompt and returns the full reply text.
 // onText(fullTextSoFar) is called as the reply streams in, so lessons appear word by word.
 export async function complete(settings, prompt, { onText, maxTokens = 2500, json = false } = {}) {
@@ -77,7 +85,7 @@ export async function complete(settings, prompt, { onText, maxTokens = 2500, jso
   catch (_) { throw new Error("Couldn't reach the AI provider. Check your internet connection."); }
   if (!res.ok) throw new Error(await explainError(res));
 
-  if (!stream) return textFromReply(settings.provider, await res.json());
+  if (!stream) return nonEmpty(textFromReply(settings.provider, await res.json()));
 
   // Server-sent events: the reply arrives as lines starting with "data: ".
   const reader = res.body.getReader();
@@ -100,7 +108,7 @@ export async function complete(settings, prompt, { onText, maxTokens = 2500, jso
       } catch (_) { /* ignore keep-alive or partial lines */ }
     }
   }
-  return full;
+  return nonEmpty(full);
 }
 
 // Asks for JSON and parses it, tolerating ```json fences or text around the object.

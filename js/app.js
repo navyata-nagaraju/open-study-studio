@@ -99,7 +99,7 @@ async function readFile(file) {
   }
   if (/\.(txt|md|markdown|csv|vtt|srt)$/i.test(file.name)) {
     // Caption files: drop the numbered timing lines and keep the words.
-    return (await file.text()).replace(/^\d+\n[\d:,.\s>-]+\n/gm, "").replace(/^WEBVTT.*$/m, "");
+    return (await file.text()).replace(/\r\n?/g, "\n").replace(/^\d+\n[\d:,.\s>-]+\n/gm, "").replace(/^WEBVTT.*$/m, "");
   }
   throw new Error(file.name + ": use a PDF or a text file, or paste the text.");
 }
@@ -310,11 +310,11 @@ function checkPane(m, t, st) {
     const box = h("div", { class: "q" }, h("strong", null, `${qi + 1}. ${c.q}`));
     c.options.forEach((option, oi) => {
       const chosen = st.picked[qi];
-      const cls = chosen == null ? "" : oi === c.answer ? " right" : oi === chosen ? " wrong" : "";
+      const cls = chosen == null ? "" : oi === +c.answer ? " right" : oi === chosen ? " wrong" : "";
       box.append(h("label", { class: "opt" + cls },
         h("input", { type: "radio", name: "c" + qi, checked: chosen === oi, disabled: chosen != null, onchange: () => { st.picked[qi] = oi; render(); } }), option));
     });
-    if (st.picked[qi] != null) box.append(h("div", { class: "fb" }, (st.picked[qi] === c.answer ? "Right. " : "Not quite. ") + (c.why || "")));
+    if (st.picked[qi] != null) box.append(h("div", { class: "fb" }, (st.picked[qi] === +c.answer ? "Right. " : "Not quite. ") + (c.why || "")));
     out.append(box);
   });
   out.append(h("div", { class: "row" },
@@ -373,9 +373,11 @@ async function markAnswers(m, t, st, btn) {
   btn.innerHTML = '<span class="spin"></span> Marking…';
   try {
     const r = await ai(markPrompt(st.qs, st.answers), { json: true });
-    st.marks = (r.marks || []).slice(0, st.qs.length);
-    if (!st.marks.length) throw new Error("The marking didn't come back. Try again.");
-    const score = Math.round((st.marks.reduce((a, b) => a + (+b.score || 0), 0) / st.marks.length) * 10);
+    const marks = (r.marks || []).slice(0, st.qs.length);
+    // Only lock the answers once real marks have arrived, so an empty reply can be retried.
+    if (!marks.length) throw new Error("The marking didn't come back. Press Mark my answers again.");
+    st.marks = marks;
+    const score = Math.round((marks.reduce((a, b) => a + (+b.score || 0), 0) / marks.length) * 10);
     S.progress = recordScore(S.progress, t.id, score, TODAY);
     await saveProgress();
     const bank = (S.bank[m.id] && S.bank[m.id].items) || [];
@@ -395,8 +397,8 @@ function viewBank() {
     page.append(h("div", { class: "card" },
       h("div", { class: "row" }, h("h2", { style: "margin-right:auto" }, m.name), h("span", { class: "small muted" }, items.length + " questions"),
         h("button", { class: "btn", onclick: () => saveFile(m.name.replace(/[^\w-]+/g, "_") + "_questions.md",
-          `# ${m.name}: question bank\n\n` + items.map((it, i) => `## ${i + 1}. ${it.topic}\n\n${it.q}\n\n**Model answer**\n\n${it.a}\n`).join("\n---\n\n"), "text/markdown") }, "Download")),
-      ...items.slice().reverse().map((it) => h("details", null, h("summary", null, it.topic + ": " + it.q.replace(/[#*`]/g, "").slice(0, 120)), md(it.q), h("div", { class: "fb" }, md(it.a))))));
+          `# ${m.name}: question bank\n\n` + items.map((it, i) => `## ${i + 1}. ${it.topic}\n\n${it.q}\n\n**Model answer**\n\n${it.a || ""}\n`).join("\n---\n\n"), "text/markdown") }, "Download")),
+      ...items.slice().reverse().map((it) => h("details", null, h("summary", null, it.topic + ": " + it.q.replace(/[#*`]/g, "").slice(0, 120)), md(it.q), h("div", { class: "fb" }, md(it.a || ""))))));
   }
   return page;
 }
@@ -514,8 +516,13 @@ function viewSettings() {
         h("button", { class: "btn", onclick: async () => saveFile(`study-studio-backup-${TODAY}.json`, JSON.stringify(await store.exportAll()), "application/json") }, "Download backup"),
         h("label", { class: "btn", style: "display:inline-flex;cursor:pointer" }, "Restore a backup",
           h("input", { type: "file", accept: ".json", hidden: true, onchange: async (e) => {
-            try { await store.importAll(JSON.parse(await e.target.files[0].text())); await load(); toast("Backup restored"); go("today"); }
-            catch (err) { toast(err.message || "That file couldn't be read."); }
+            const input = e.target;
+            let backup;
+            try { backup = JSON.parse(await input.files[0].text()); }
+            catch (_) { input.value = ""; toast("That file isn't a valid backup."); return; }
+            try { await store.importAll(backup); S.example = false; await load(); toast("Backup restored"); go("today"); }
+            catch (err) { toast(err.message || "That file isn't a valid backup."); }
+            input.value = ""; // so the same file can be chosen again
           } })))));
 }
 
@@ -535,7 +542,12 @@ function exampleData() {
 }
 function enterExample() { const ex = exampleData(); Object.assign(S, { example: true, profile: ex.profile, plans: ex.plans, progress: ex.progress, files: {}, bank: {}, draft: null }); go("today"); }
 async function leaveExample(keepDraft) {
-  const saved = await store.loadAll();
+  let saved;
+  try { saved = await store.loadAll(); }
+  catch (_) {
+    saved = { profile: null, plans: {}, progress: {}, files: {}, bank: {} };
+    toast("This browser is blocking storage (private mode?). You can try the app, but nothing will be saved.");
+  }
   Object.assign(S, { example: false, profile: saved.profile, plans: saved.plans, progress: saved.progress, files: saved.files, bank: saved.bank });
   if (!keepDraft) { S.draft = null; go("setup"); }
 }
