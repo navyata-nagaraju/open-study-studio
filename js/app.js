@@ -181,7 +181,7 @@ function viewToday() {
       h("p", { class: "muted" }, isStudyDay(P(), TODAY)
         ? `${today.length} topic${today.length === 1 ? "" : "s"}, about ${today.length * MINUTES_PER_TOPIC} minutes. Anything you miss moves to your next study day.`
         : "Today is a rest day in your plan.")),
-    S.example ? h("div", { class: "banner" }, "This is an example course so you can look around. ", h("button", { class: "btn small", onclick: leaveExample }, "Start my own")) : null,
+    S.example ? h("div", { class: "banner" }, "This is an example course so you can look around. ", h("button", { class: "btn small", onclick: () => leaveExample() }, "Start my own")) : null,
     !hasKey() && !S.example ? h("div", { class: "banner" }, "The tutor needs an AI key to plan and teach. ", h("button", { class: "btn small", onclick: () => go("settings") }, "Add a key")) : null,
     unplanned.length && hasKey() ? h("div", { class: "banner" }, `${unplanned.map((m) => m.name).join(", ")} ${unplanned.length > 1 ? "have" : "has"} no topics yet. `,
       h("button", { class: "btn small", onclick: async (e) => { for (const m of unplanned) await buildPlan(m, e.target); } }, "Plan now")) : null,
